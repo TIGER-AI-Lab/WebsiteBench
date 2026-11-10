@@ -65,6 +65,16 @@ class DownloadTasks(unittest.TestCase):
         with self.assertRaises(ValueError):
             download.restore_modes(self.task, ["solution/missing.sh"])
 
+    def test_symlink_is_reported_by_relative_path(self):
+        (self.task / "environment/link").symlink_to("Dockerfile")
+        with self.assertRaisesRegex(ValueError, "environment/link"):
+            download.restore_modes(self.task, self.entry["executables"])
+
+    def test_missing_executables_are_listed_in_order(self):
+        with self.assertRaises(ValueError) as caught:
+            download.restore_modes(self.task, ["z.sh", "a.sh"])
+        self.assertIn("['a.sh', 'z.sh']", str(caught.exception))
+
     def test_matching_task_is_installed(self):
         output = self.root / "local-tasks"
         with contextlib.redirect_stdout(io.StringIO()):
