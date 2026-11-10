@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import shutil
-import ssl
 import subprocess
 import sysconfig
 import tarfile
@@ -97,18 +96,12 @@ def fetch_hf(
             try:
                 subprocess.run(task_command, check=True)
                 break
-            except (
-                subprocess.CalledProcessError,
-                subprocess.TimeoutExpired,
-                ConnectionError,
-                ssl.SSLError,
-                TimeoutError,
-            ):
+            except subprocess.CalledProcessError as exc:
                 if attempt == 2:
                     raise
                 print(
-                    f"retrying {task} after a network error "
-                    f"(attempt {attempt + 2} of 3)",
+                    f"retrying {task}: hf download exited with status "
+                    f"{exc.returncode} (attempt {attempt + 2} of 3)",
                     flush=True,
                 )
                 time.sleep((10, 30)[attempt])

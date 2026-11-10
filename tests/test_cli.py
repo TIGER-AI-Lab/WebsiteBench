@@ -207,8 +207,8 @@ class Download(unittest.TestCase):
         self.assertEqual(
             out.splitlines(),
             [
-                "retrying sample after a network error (attempt 2 of 3)",
-                "retrying sample after a network error (attempt 3 of 3)",
+                "retrying sample: hf download exited with status 1 (attempt 2 of 3)",
+                "retrying sample: hf download exited with status 1 (attempt 3 of 3)",
             ],
         )
         self.assertEqual(list(self.root.iterdir()), [])
