@@ -200,12 +200,20 @@ class NativeTaskChecks(unittest.TestCase):
 
     def test_cli_selects_tasks_and_reports_failure_without_host_paths(self):
         (self.task / "tests/evaluation-contract.json").unlink()
-        output = io.StringIO()
-        with contextlib.redirect_stderr(output):
+        output, summary = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stderr(output), contextlib.redirect_stdout(summary):
             result = checks.main(["--root", str(self.root), "--task", "sample"])
         self.assertEqual(result, 1)
         self.assertNotIn(str(self.root), output.getvalue())
         self.assertIn("FAIL sample", output.getvalue())
+        self.assertIn("0 passed, 1 failed", summary.getvalue())
+
+    def test_cli_prints_a_summary(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = checks.main(["--root", str(self.root)])
+        self.assertEqual(result, 0)
+        self.assertTrue(output.getvalue().endswith("1 passed, 0 failed\n"))
 
     def test_code_only_accepts_source_definitions_without_application_payload(self):
         for role in (
