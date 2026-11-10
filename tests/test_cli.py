@@ -146,7 +146,7 @@ class Download(unittest.TestCase):
         with mock.patch.object(cli, "fetch_hub", side_effect=missing):
             code, _, err = run_cli("download", "--output", str(self.output))
         self.assertEqual(code, 1)
-        self.assertIn("harbor", err)
+        self.assertIn("the harbor command was not found", err)
 
     def test_hf_source_is_selected(self):
         def fake_hf(index, tasks, staging, revision):
