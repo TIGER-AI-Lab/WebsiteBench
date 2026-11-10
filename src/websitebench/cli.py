@@ -58,7 +58,8 @@ def build_parser(index: dict, default_output: Path) -> argparse.ArgumentParser:
         help="directory that receives one directory per task (default: %(default)s)",
     )
     download.add_argument(
-        "--revision", help="Hugging Face revision; defaults to the pinned release"
+        "--revision",
+        help="Hugging Face revision (with --source hf); defaults to the pinned release",
     )
     download.add_argument(
         "--force", action="store_true", help="replace existing task directories"
@@ -100,6 +101,8 @@ def run_download(args: argparse.Namespace, index: dict, harbor: str | None) -> i
     unknown = sorted(set(tasks) - set(index["tasks"]))
     if unknown:
         args.parser.error(f"not in the release: {', '.join(unknown)}")
+    if args.revision and args.source != "hf":
+        args.parser.error("--revision applies only to --source hf")
 
     staging_parent = args.output.parent if args.output.parent.exists() else None
     with tempfile.TemporaryDirectory(

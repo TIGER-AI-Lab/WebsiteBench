@@ -167,6 +167,15 @@ class Download(unittest.TestCase):
         self.assertEqual(fetch.call_args.args[3], "abc")
         self.assertTrue((self.output / "sample/task.toml").is_file())
 
+    def test_revision_requires_source_hf(self):
+        with mock.patch.object(cli, "fetch_hub", mock.Mock()) as fetch:
+            code, _, err = run_cli(
+                "download", "--revision", "abc", "--output", str(self.output)
+            )
+        self.assertEqual(code, 2)
+        self.assertIn("--source hf", err)
+        fetch.assert_not_called()
+
     def test_hf_transient_failure_is_retried(self):
         failure = subprocess.CalledProcessError(1, ["hf", "download"])
 
