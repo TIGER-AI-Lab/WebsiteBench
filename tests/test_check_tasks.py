@@ -207,6 +207,19 @@ class NativeTaskChecks(unittest.TestCase):
         self.assertNotIn(str(self.root), output.getvalue())
         self.assertIn("FAIL sample", output.getvalue())
 
+    def test_invalid_task_name_fails_before_any_check(self):
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+            self.assertRaises(SystemExit),
+        ):
+            checks.main(
+                ["--root", str(self.root), "--task", "sample", "--task", "Bad Name"]
+            )
+        self.assertIn("'Bad Name'", err.getvalue())
+        self.assertNotIn("PASS sample", out.getvalue())
+
     def test_code_only_accepts_source_definitions_without_application_payload(self):
         for role in (
             "environment/reference",
