@@ -167,6 +167,21 @@ class Download(unittest.TestCase):
         self.assertEqual(fetch.call_args.args[3], "abc")
         self.assertTrue((self.output / "sample/task.toml").is_file())
 
+    def test_staging_is_created_beside_a_new_output(self):
+        output = self.root / "a/b/local-tasks"
+        with (
+            mock.patch.object(
+                cli.tempfile,
+                "TemporaryDirectory",
+                wraps=tempfile.TemporaryDirectory,
+            ) as staging,
+            mock.patch.object(cli, "fetch_hub", side_effect=fake_hub),
+        ):
+            code, _, err = run_cli("download", "--output", str(output))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(staging.call_args.kwargs["dir"], self.root / "a/b")
+        self.assertTrue((self.root / "a/b/local-tasks/sample/task.toml").is_file())
+
     def test_hf_transient_failure_is_retried(self):
         failure = subprocess.CalledProcessError(1, ["hf", "download"])
 
