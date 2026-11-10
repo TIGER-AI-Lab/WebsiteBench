@@ -1,12 +1,16 @@
 name: Code checks
 
 on:
-  push:
+  push: { branches: [main] }
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   static-and-unit:
