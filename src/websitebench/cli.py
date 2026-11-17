@@ -115,10 +115,15 @@ def run_download(args: argparse.Namespace, index: dict, harbor: str | None) -> i
         except (OSError, subprocess.CalledProcessError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
-    task = tasks[0] if len(tasks) == 1 else "<task>"
+    output = display_path(args.output)
+    path = (
+        shlex.quote(f"{output}/{tasks[0]}")
+        if len(tasks) == 1
+        else f"{shlex.quote(output)}/<task>"
+    )
     print(
         f"Run a task with: {harbor or harbor_command()} run "
-        f"--path {display_path(args.output)}/{task} --agent oracle"
+        f"--path {path} --agent oracle"
     )
     return 0
 
