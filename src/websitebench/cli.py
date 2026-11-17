@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
 import shutil
@@ -65,12 +66,33 @@ def build_parser(index: dict, default_output: Path) -> argparse.ArgumentParser:
     )
     download.set_defaults(parser=download)
 
-    commands.add_parser(
+    listing = commands.add_parser(
         "list",
         help="list the task names in the release",
         description="Print the name of every task in the release, one per line.",
     )
+    listing.add_argument(
+        "--json",
+        action="store_true",
+        help="print a JSON array with each task's Harbor Hub reference and hash",
+    )
     return parser
+
+
+def task_records(index: dict) -> list[dict]:
+    """Describe each release task with the references both sources use."""
+    return [
+        {
+            "name": name,
+            "hub_reference": (
+                f"{index['hub_task_org']}/{name}@sha256:{entry['content_hash']}"
+            ),
+            "hf_path": f"tasks/{name}",
+            "content_hash": entry["content_hash"],
+            "file_count": entry["file_count"],
+        }
+        for name, entry in sorted(index["tasks"].items())
+    ]
 
 
 def harbor_command() -> str:
@@ -133,6 +155,9 @@ def main(
     index = load_index()
     args = build_parser(index, default_output).parse_args(argv)
     if args.command == "list":
-        print("\n".join(sorted(index["tasks"])))
+        if args.json:
+            print(json.dumps(task_records(index), indent=1))
+        else:
+            print("\n".join(sorted(index["tasks"])))
         return 0
     return run_download(args, index, harbor)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import subprocess
 import sys
@@ -83,6 +84,24 @@ class Command(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out.split(), sorted(INDEX["tasks"]))
         self.assertEqual(len(out.split()), INDEX["task_count"])
+
+    def test_list_json_describes_every_task(self):
+        code, out, _ = run_cli("list", "--json")
+        self.assertEqual(code, 0)
+        records = json.loads(out)
+        self.assertEqual([r["name"] for r in records], sorted(INDEX["tasks"]))
+        medium = next(r for r in records if r["name"] == "medium")
+        entry = INDEX["tasks"]["medium"]
+        self.assertEqual(
+            medium,
+            {
+                "name": "medium",
+                "hub_reference": f"websitebench/medium@sha256:{entry['content_hash']}",
+                "hf_path": "tasks/medium",
+                "content_hash": entry["content_hash"],
+                "file_count": entry["file_count"],
+            },
+        )
 
     def test_a_command_is_required(self):
         code, _, err = run_cli()
