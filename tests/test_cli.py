@@ -133,6 +133,49 @@ class Download(unittest.TestCase):
         self.assertEqual((task / "task.toml").stat().st_mode & 0o777, 0o644)
         self.assertEqual([p.name for p in self.root.iterdir()], ["local-tasks"])
 
+    def test_skip_existing_keeps_a_matching_task(self):
+        write_task(self.output / "sample")
+        with mock.patch.object(cli, "fetch_hub", side_effect=fake_hub) as fetch:
+            code, out, err = run_cli(
+                "download", "--skip-existing", "--output", str(self.output)
+            )
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out, "SKIP sample (matches the release)\n")
+        fetch.assert_not_called()
+
+    def test_skip_existing_fails_on_a_task_that_differs(self):
+        write_task(self.output / "sample")
+        (self.output / "sample/instruction.md").write_text("Edited.\n")
+        with mock.patch.object(cli, "fetch_hub", side_effect=fake_hub) as fetch:
+            code, _, err = run_cli(
+                "download", "--skip-existing", "--output", str(self.output)
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("sample: content hash", err)
+        self.assertIn("pass --force to replace it", err)
+        fetch.assert_not_called()
+
+    def test_skip_existing_downloads_the_missing_tasks(self):
+        entry = sample_index()["tasks"]["sample"]
+        index = {**INDEX, "tasks": {"alpha": entry, "beta": entry}}
+        write_task(self.output / "alpha")
+        with (
+            mock.patch.object(cli, "load_index", return_value=index),
+            mock.patch.object(cli, "fetch_hub", side_effect=fake_hub) as fetch,
+        ):
+            code, out, err = run_cli(
+                "download", "--skip-existing", "--output", str(self.output)
+            )
+        self.assertEqual(code, 0, err)
+        self.assertEqual(fetch.call_args.args[1], ["beta"])
+        self.assertIn("SKIP alpha", out)
+        self.assertIn("OK beta", out)
+
+    def test_force_and_skip_existing_are_exclusive(self):
+        code, _, err = run_cli("download", "--force", "--skip-existing")
+        self.assertEqual(code, 2)
+        self.assertIn("not allowed with argument", err)
+
     def test_failed_download_installs_nothing(self):
         failure = subprocess.CalledProcessError(1, ["harbor", "download"])
         with mock.patch.object(cli, "fetch_hub", side_effect=failure):
