@@ -107,6 +107,7 @@ LANGUAGES: Mapping[str, str] = {
     ".cjs": "javascript",
     ".cpp": "c",
     ".cs": "csharp",
+    ".css": "css",
     ".cts": "typescript",
     ".ejs": "template",
     ".go": "go",
@@ -198,11 +199,51 @@ _SQL_SCANNER = re.compile(
 )
 _HTML_SCANNER = re.compile(r"(?P<drop><!--.*?-->)", re.DOTALL)
 
+# The same scanners without their block-comment alternative.  A block comment
+# can only match where its closer still occurs later in the text, so past that
+# point these give the same result without searching to the end of the text
+# from every unclosed opener, which made stripping quadratic.
+_C_SCANNER_OPEN = re.compile(
+    r"""
+      (?P<keep>  "(?:\\.|[^"\\\n])*"
+               | '(?:\\.|[^'\\\n])*'
+               | `(?:\\.|[^`\\])*`   )
+    | (?P<drop>  //[^\n]* )
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+_SQL_SCANNER_OPEN = re.compile(
+    r"""
+      (?P<keep>  '(?:''|[^'\n])*' )
+    | (?P<drop>  --[^\n]* )
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+
+
+class _Scanner:
+    """A comment scanner, its block-comment delimiters and match start characters."""
+
+    def __init__(
+        self,
+        pattern: re.Pattern[str],
+        without_block: re.Pattern[str] | None,
+        opener: str,
+        closer: str,
+        starts: str,
+    ) -> None:
+        self.pattern = pattern
+        self.without_block = without_block
+        self.opener = opener
+        self.closer = closer
+        self.starts = re.compile(f"[{re.escape(starts)}]")
+
+
 _SCANNERS = {
-    "c": _C_SCANNER,
-    "hash": _HASH_SCANNER,
-    "sql": _SQL_SCANNER,
-    "html": _HTML_SCANNER,
+    "c": _Scanner(_C_SCANNER, _C_SCANNER_OPEN, "/*", "*/", "\"'`/"),
+    "hash": _Scanner(_HASH_SCANNER, None, "", "", "\"'#"),
+    "sql": _Scanner(_SQL_SCANNER, _SQL_SCANNER_OPEN, "/*", "*/", "'-/"),
+    "html": _Scanner(_HTML_SCANNER, None, "<!--", "-->", "<"),
 }
 
 
@@ -232,13 +273,34 @@ def strip_comments(text: str, language: str) -> str:
     scanner = _SCANNERS.get(COMMENT_STYLES.get(language, ""))
     if scanner is None:
         return text
-
-    def replace(match: re.Match[str]) -> str:
+    # An opener at ``position`` can close only if the last closer starts at or
+    # after ``position + len(opener)``; from ``boundary`` on, none can.
+    boundary = len(text)
+    if scanner.opener:
+        boundary = max(0, text.rfind(scanner.closer) - len(scanner.opener) + 1)
+    parts: list[str] = []
+    copied = 0
+    position = 0
+    while True:
+        start = scanner.starts.search(text, position)
+        if start is None:
+            break
+        position = start.start()
+        pattern = scanner.pattern if position < boundary else scanner.without_block
+        if pattern is None:
+            break
+        match = pattern.match(text, position)
+        if match is None:
+            position += 1
+            continue
+        parts.append(text[copied:position])
         if match.lastgroup == "keep":
-            return match.group()
-        return "\n" * match.group().count("\n")
-
-    return scanner.sub(replace, text)
+            parts.append(match.group())
+        else:
+            parts.append("\n" * match.group().count("\n"))
+        copied = position = match.end()
+    parts.append(text[copied:])
+    return "".join(parts)
 
 
 def normalize_lines(text: str, language: str) -> list[tuple[int, str]]:
