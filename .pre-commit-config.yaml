@@ -1,0 +1,24 @@
+# Runs the same Ruff checks as CI on the development code. Install with
+#   uvx pre-commit install
+# Keep the Ruff revision equal to the version in uv.lock.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+        files: ^(scripts|src|tests)/
+      - id: ruff-format
+        files: ^(scripts|src|tests)/
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        exclude: ^tasks/
+      - id: check-toml
+        exclude: ^tasks/
+      - id: check-json
+        files: ^src/websitebench/.*\.json$
+      - id: end-of-file-fixer
+        exclude: ^(tasks/|assets/)
+      - id: trailing-whitespace
+        exclude: ^(tasks/|assets/)

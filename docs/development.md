@@ -41,6 +41,12 @@ Format edited development code with:
 uv run ruff format scripts src tests
 ```
 
+To run Ruff and basic YAML, TOML and whitespace checks on every commit, install the [pre-commit](https://pre-commit.com/) hooks:
+
+```sh
+uvx pre-commit install
+```
+
 ## CI
 
 [CI](../.github/workflows/ci.yml) runs on Python 3.12 and 3.13. It installs locked dependencies, checks source task definitions, runs the unit tests and Ruff checks, and verifies the official Harbor command's help output.
