@@ -141,6 +141,31 @@ class Download(unittest.TestCase):
         self.assertIn("error:", err)
         self.assertEqual(list(self.root.iterdir()), [])
 
+    def test_a_failed_task_keeps_the_tasks_already_installed(self):
+        entry = sample_index()["tasks"]["sample"]
+        index = {**INDEX, "tasks": {"alpha": entry, "beta": entry, "gamma": entry}}
+
+        def fetch(index, tasks, staging):
+            if tasks == ["beta"]:
+                raise subprocess.CalledProcessError(1, ["harbor", "download"])
+            return fake_hub(index, tasks, staging)
+
+        with (
+            mock.patch.object(cli, "load_index", return_value=index),
+            mock.patch.object(cli, "fetch_hub", side_effect=fetch) as hub,
+        ):
+            code, out, err = run_cli("download", "--output", str(self.output))
+        self.assertEqual(code, 1)
+        self.assertEqual(hub.call_count, 3)
+        self.assertIn("OK alpha", out)
+        self.assertIn("OK gamma", out)
+        self.assertIn("error: beta:", err)
+        self.assertIn("error: 1 of 3 tasks failed: beta", err)
+        self.assertEqual(
+            sorted(p.name for p in self.output.iterdir()), ["alpha", "gamma"]
+        )
+        self.assertEqual([p.name for p in self.root.iterdir()], ["local-tasks"])
+
     def test_missing_command_is_reported(self):
         missing = FileNotFoundError(2, "No such file or directory", "harbor")
         with mock.patch.object(cli, "fetch_hub", side_effect=missing):
