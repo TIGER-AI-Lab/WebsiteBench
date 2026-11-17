@@ -128,8 +128,15 @@ def unpack_dirs(task_dir: Path, packed: list[str]) -> None:
             )
         target = task_dir / relative
         target.mkdir(parents=True, exist_ok=True)
-        with tarfile.open(archive) as tar:
-            tar.extractall(target, filter="data")
+        try:
+            with tarfile.open(archive) as tar:
+                tar.extractall(target, filter="data")
+        except tarfile.TarError as exc:
+            # A truncated download or an unsafe member (an absolute path, "..",
+            # a link out of the directory) must not end in a traceback.
+            raise ValueError(
+                f"{task_dir.name}: cannot unpack {relative}.tar: {exc}"
+            ) from exc
         archive.unlink()
 
 
