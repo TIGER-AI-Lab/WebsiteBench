@@ -135,4 +135,8 @@ def main(
     if args.command == "list":
         print("\n".join(sorted(index["tasks"])))
         return 0
-    return run_download(args, index, harbor)
+    try:
+        return run_download(args, index, harbor)
+    except KeyboardInterrupt:
+        print("interrupted; partial downloads were removed", file=sys.stderr)
+        return 130
