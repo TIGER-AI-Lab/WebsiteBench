@@ -107,6 +107,7 @@ LANGUAGES: Mapping[str, str] = {
     ".cjs": "javascript",
     ".cpp": "c",
     ".cs": "csharp",
+    ".css": "css",
     ".cts": "typescript",
     ".ejs": "template",
     ".go": "go",
