@@ -7,3 +7,4 @@
 | [Tasks](tasks.md) | Every task's cases and download size |
 | [Task format](task-format.md) | Task directories, compile and runtime interface, scoring |
 | [Development](development.md) | Checks, tests, CI, package releases |
+| [Contributing](../CONTRIBUTING.md) | Where changes go, pull requests, reporting |
