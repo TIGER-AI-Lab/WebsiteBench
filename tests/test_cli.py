@@ -6,6 +6,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -132,6 +133,20 @@ class Download(unittest.TestCase):
         self.assertEqual((task / "tests/test.sh").stat().st_mode & 0o777, 0o755)
         self.assertEqual((task / "task.toml").stat().st_mode & 0o777, 0o644)
         self.assertEqual([p.name for p in self.root.iterdir()], ["local-tasks"])
+
+    def test_hint_quotes_an_output_path_with_spaces(self):
+        output = self.root / "my tasks"
+        with mock.patch.object(cli, "fetch_hub", side_effect=fake_hub):
+            code, out, err = run_cli(
+                "download", "--task", "sample", "--output", str(output)
+            )
+        self.assertEqual(code, 0, err)
+        hint = out.splitlines()[-1]
+        self.assertIn(f"--path '{cli.display_path(output)}/sample' --agent", hint)
+        self.assertEqual(
+            shlex.split(hint.removeprefix("Run a task with: "))[3],
+            f"{cli.display_path(output)}/sample",
+        )
 
     def test_failed_download_installs_nothing(self):
         failure = subprocess.CalledProcessError(1, ["harbor", "download"])
