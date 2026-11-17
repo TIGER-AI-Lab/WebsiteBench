@@ -133,6 +133,15 @@ class Download(unittest.TestCase):
         self.assertEqual((task / "task.toml").stat().st_mode & 0o777, 0o644)
         self.assertEqual([p.name for p in self.root.iterdir()], ["local-tasks"])
 
+    def test_output_that_is_a_file_is_rejected_before_downloading(self):
+        self.output.write_text("not a directory\n")
+        with mock.patch.object(cli, "fetch_hub", side_effect=fake_hub) as fetch:
+            code, _, err = run_cli("download", "--output", str(self.output))
+        self.assertEqual(code, 2)
+        self.assertIn("exists and is not a directory", err)
+        fetch.assert_not_called()
+        self.assertEqual(self.output.read_text(), "not a directory\n")
+
     def test_failed_download_installs_nothing(self):
         failure = subprocess.CalledProcessError(1, ["harbor", "download"])
         with mock.patch.object(cli, "fetch_hub", side_effect=failure):
