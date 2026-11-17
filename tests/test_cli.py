@@ -141,6 +141,14 @@ class Download(unittest.TestCase):
         self.assertIn("error:", err)
         self.assertEqual(list(self.root.iterdir()), [])
 
+    def test_interrupt_exits_130_and_removes_the_staging_directory(self):
+        with mock.patch.object(cli, "fetch_hub", side_effect=KeyboardInterrupt):
+            code, out, err = run_cli("download", "--output", str(self.output))
+        self.assertEqual(code, 130)
+        self.assertEqual(out, "")
+        self.assertEqual(err, "interrupted; partial downloads were removed\n")
+        self.assertEqual(list(self.root.iterdir()), [])
+
     def test_missing_command_is_reported(self):
         missing = FileNotFoundError(2, "No such file or directory", "harbor")
         with mock.patch.object(cli, "fetch_hub", side_effect=missing):
