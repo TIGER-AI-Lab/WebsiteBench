@@ -101,6 +101,23 @@ class DownloadTasks(unittest.TestCase):
         download.restore_modes(self.task, entry["executables"])
         download.verify_task(self.task, entry)
 
+    def test_corrupt_packed_directory_is_a_value_error(self):
+        (self.task / "environment/media.tar").write_bytes(b"truncated" * 64)
+        with self.assertRaisesRegex(
+            ValueError, "sample: cannot unpack environment/media.tar"
+        ):
+            download.unpack_dirs(self.task, ["environment/media"])
+
+    def test_packed_member_outside_the_directory_is_refused(self):
+        with tarfile.open(self.task / "environment/media.tar", "w") as tar:
+            member = tarfile.TarInfo("../../escape.txt")
+            member.size = 1
+            tar.addfile(member, io.BytesIO(b"x"))
+        with self.assertRaisesRegex(ValueError, "sample: cannot unpack"):
+            download.unpack_dirs(self.task, ["environment/media"])
+        self.assertFalse((self.fetched / "escape.txt").exists())
+        self.assertFalse((self.task / "escape.txt").exists())
+
 
 class ReleaseIndex(unittest.TestCase):
     def test_index_lists_exactly_the_repository_tasks(self):
