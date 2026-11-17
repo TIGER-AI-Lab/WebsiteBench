@@ -25,6 +25,14 @@ uv run python scripts/check_tasks.py --root ./local-tasks \
 
 Use `--task` to select individual task directories. Run `uv run python scripts/check_tasks.py --help` for all options.
 
+`scripts/lint_tasks.py` runs Harbor's own task linter with its default rules over every task, and needs the Docker CLI with the Compose plugin (no daemon):
+
+```sh
+uv run python scripts/lint_tasks.py
+```
+
+It leaves out the two findings Harbor 0.25.0 reports on every task without a problem in the task; the script's docstring describes both.
+
 ## Unit tests and code style
 
 ```sh
