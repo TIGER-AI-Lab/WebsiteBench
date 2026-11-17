@@ -7,11 +7,13 @@ import importlib.metadata
 import io
 import json
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from harbor.publisher.packager import Packager
 
@@ -100,6 +102,35 @@ class DownloadTasks(unittest.TestCase):
         self.assertFalse((self.task / "environment/media.tar").exists())
         download.restore_modes(self.task, entry["executables"])
         download.verify_task(self.task, entry)
+
+
+class HuggingFaceCli(unittest.TestCase):
+    def test_hf_download_accepts_every_flag_fetch_hf_passes(self):
+        """The locked huggingface-hub CLI still takes the flags download.py builds."""
+        commands = []
+        with (
+            tempfile.TemporaryDirectory() as staging,
+            mock.patch.object(
+                download.subprocess,
+                "run",
+                side_effect=lambda command, **_: commands.append(command),
+            ),
+        ):
+            index = {"hf_dataset": "org/data", "hf_revision": "main"}
+            index["tasks"] = {"sample": {}}
+            download.fetch_hf(index, ["sample"], Path(staging), None)
+        flags = {part for part in commands[0] if part.startswith("--")}
+        self.assertEqual(
+            flags, {"--repo-type", "--local-dir", "--revision", "--include"}
+        )
+        usage = subprocess.run(
+            [commands[0][0], "download", "--help"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        for flag in sorted(flags):
+            self.assertIn(flag, usage)
 
 
 class ReleaseIndex(unittest.TestCase):

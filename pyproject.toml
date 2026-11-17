@@ -18,8 +18,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 # Harbor is pinned: task content hashes are computed with its packager, and the
-# tasks target its configuration schema. huggingface-hub provides `hf download`.
-dependencies = ["harbor==0.25.0", "huggingface-hub>=1.0"]
+# tasks target its configuration schema. huggingface-hub provides `hf download`,
+# whose command-line flags download.py builds; it stays on the 1.x CLI until a
+# new major version is tested.
+dependencies = ["harbor==0.25.0", "huggingface-hub>=1.0,<2"]
 
 [project.scripts]
 websitebench = "websitebench.cli:main"
