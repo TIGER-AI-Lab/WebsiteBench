@@ -43,7 +43,7 @@ uv run ruff format scripts src tests
 
 ## CI
 
-[CI](../.github/workflows/ci.yml) runs on Python 3.12 and 3.13. It installs locked dependencies, checks source task definitions, runs the unit tests and Ruff checks, and verifies the official Harbor command's help output.
+[CI](../.github/workflows/ci.yml) runs on Python 3.12, 3.13 and 3.14. It installs locked dependencies, checks source task definitions, runs the unit tests and Ruff checks, and verifies the official Harbor command's help output.
 
 ## Package release
 
