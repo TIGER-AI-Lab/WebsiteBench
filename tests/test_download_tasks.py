@@ -123,6 +123,26 @@ class ReleaseIndex(unittest.TestCase):
         self.assertIn(f"harbor=={index['harbor']}", project["dependencies"])
         self.assertEqual(importlib.metadata.version("harbor"), index["harbor"])
 
+    def test_index_executables_match_the_source_modes(self):
+        """The checkout and the release agree on which task files are executable.
+
+        Hugging Face does not store file modes, so the index is the only record
+        of them for that source; a script made executable in the checkout but
+        missing from the index would install without its executable bit.
+        """
+        index = download.load_index()
+        mismatched = []
+        for name, entry in sorted(index["tasks"].items()):
+            task = ROOT / "tasks" / name
+            listed = set(entry["executables"])
+            for path in sorted(task.rglob("*")):
+                if not path.is_file():
+                    continue
+                relative = path.relative_to(task).as_posix()
+                if bool(path.stat().st_mode & 0o111) != (relative in listed):
+                    mismatched.append(f"{name}/{relative}")
+        self.assertEqual(mismatched, [])
+
     def test_index_with_another_schema_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "index.json"
