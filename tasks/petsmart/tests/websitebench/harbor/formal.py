@@ -825,9 +825,9 @@ class FormalCaseRunner:
             if str(identifier) in self.visuals
         )
         declared.extend(
-            float(self.checks[str(case["check_id"])]["timeout_sec"])
+            float(self.checks[str(case["cicd_check_id"])]["timeout_sec"])
             for _ in (0,)
-            if str(case.get("check_id")) in self.checks
+            if str(case.get("cicd_check_id")) in self.checks
         )
         longest = max(declared) if declared else 0.0
         startup = 3 * max(60.0, longest)
