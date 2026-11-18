@@ -141,6 +141,31 @@ class Download(unittest.TestCase):
         self.assertIn("error:", err)
         self.assertEqual(list(self.root.iterdir()), [])
 
+    def test_force_restores_installed_task_when_replacement_fails(self):
+        task = self.output / "sample"
+        write_task(task)
+        marker = task / "original.txt"
+        marker.write_text("Original task.\n")
+        failure = OSError("cannot install replacement")
+        rename = os.rename
+
+        def fail_replacement(source, destination):
+            if Path(destination) == task and not (Path(source) / marker.name).exists():
+                raise failure
+            rename(source, destination)
+
+        with (
+            mock.patch.object(cli, "fetch_hub", side_effect=fake_hub),
+            mock.patch.object(os, "rename", side_effect=fail_replacement),
+            mock.patch.object(download.shutil, "copytree", side_effect=failure),
+        ):
+            code, _, err = run_cli("download", "--output", str(self.output), "--force")
+        self.assertEqual(code, 1)
+        self.assertIn(str(failure), err)
+        self.assertTrue(marker.is_file())
+        self.assertEqual(marker.read_text(), "Original task.\n")
+        self.assertEqual(list(self.output.iterdir()), [task])
+
     def test_missing_command_is_reported(self):
         missing = FileNotFoundError(2, "No such file or directory", "harbor")
         with mock.patch.object(cli, "fetch_hub", side_effect=missing):
