@@ -15,6 +15,7 @@ import ssl
 import subprocess
 import sysconfig
 import tarfile
+import tempfile
 import time
 from importlib import resources
 from pathlib import Path
@@ -154,10 +155,25 @@ def install(
         restore_modes(source, index["tasks"][task]["executables"])
         verify_task(source, index["tasks"][task])
         destination = output / task
-        if destination.exists():
-            if not force:
-                raise ValueError(f"{destination} exists; pass --force to replace it")
-            shutil.rmtree(destination)
+        if not force and destination.exists():
+            raise ValueError(f"{destination} exists; pass --force to replace it")
         output.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source), destination)
+        with tempfile.TemporaryDirectory(
+            dir=output, prefix=".websitebench-install-"
+        ) as tmp:
+            staging = Path(tmp)
+            replacement = staging / task
+            shutil.move(str(source), replacement)
+            if force and destination.is_dir() and not destination.is_symlink():
+                # Keep the backup outside staging so it survives a failed rollback.
+                backup = staging.with_name(f"{staging.name}.backup")
+                destination.rename(backup)
+                try:
+                    replacement.rename(destination)
+                except OSError:
+                    backup.rename(destination)
+                    raise
+                shutil.rmtree(backup)
+            else:
+                replacement.rename(destination)
         print(f"OK {task} -> {destination}")
