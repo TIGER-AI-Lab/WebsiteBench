@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+PYTHONPATH=/opt/websitebench/candidate-abi
+export PYTHONPATH
+exec python3 -m websitebench.harbor.candidate_preflight "$@"
