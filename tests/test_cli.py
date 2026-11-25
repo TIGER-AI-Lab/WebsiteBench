@@ -120,6 +120,28 @@ class Download(unittest.TestCase):
         index.start()
         self.addCleanup(index.stop)
 
+    def test_hub_revision_is_rejected_before_fetching(self):
+        for source in ([], ["--source", "hub"]):
+            for revision in ("does-not-exist", ""):
+                with self.subTest(source=source, revision=revision):
+                    with (
+                        mock.patch.object(cli, "fetch_hub") as hub,
+                        mock.patch.object(cli, "fetch_hf") as hf,
+                    ):
+                        code, _, err = run_cli(
+                            "download",
+                            *source,
+                            "--revision",
+                            revision,
+                            "--output",
+                            str(self.output),
+                        )
+                    self.assertEqual(code, 2)
+                    self.assertIn("--revision requires --source hf", err)
+                    hub.assert_not_called()
+                    hf.assert_not_called()
+                    self.assertEqual(list(self.root.iterdir()), [])
+
     def test_downloaded_task_is_checked_and_installed(self):
         with mock.patch.object(cli, "fetch_hub", side_effect=fake_hub):
             code, out, err = run_cli(
