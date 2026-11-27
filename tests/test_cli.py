@@ -57,6 +57,12 @@ def sample_index() -> dict:
     return {**INDEX, "tasks": {"sample": entry}}
 
 
+def two_task_index() -> dict:
+    index = sample_index()
+    entry = index["tasks"]["sample"]
+    return {**index, "tasks": {"sample": entry, "other": entry}}
+
+
 def fake_hub(index: dict, tasks: list[str], staging: Path) -> Path:
     for task in tasks:
         write_task(staging / task)
@@ -147,6 +153,27 @@ class Download(unittest.TestCase):
             code, _, err = run_cli("download", "--output", str(self.output))
         self.assertEqual(code, 1)
         self.assertIn("harbor", err)
+
+    def test_one_failed_task_does_not_discard_the_rest(self):
+        failure = subprocess.CalledProcessError(1, ["harbor", "download"])
+
+        def fetch_or_fail(index, tasks, staging):
+            [name] = tasks
+            if name == "other":
+                raise failure
+            return fake_hub(index, tasks, staging)
+
+        with (
+            mock.patch.object(cli, "load_index", return_value=two_task_index()),
+            mock.patch.object(cli, "fetch_hub", side_effect=fetch_or_fail),
+        ):
+            code, out, err = run_cli("download", "--output", str(self.output))
+        self.assertEqual(code, 1)
+        self.assertIn("OK sample", out)
+        self.assertIn("error: other:", err)
+        self.assertIn("failed: other", err)
+        self.assertTrue((self.output / "sample/task.toml").is_file())
+        self.assertFalse((self.output / "other").exists())
 
     def test_hf_source_is_selected(self):
         def fake_hf(index, tasks, staging, revision):
